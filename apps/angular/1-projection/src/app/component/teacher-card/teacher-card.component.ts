@@ -4,37 +4,58 @@ import {
   inject,
   OnInit,
 } from '@angular/core';
-import { FakeHttpService } from '../../data-access/fake-http.service';
+import {
+  FakeHttpService,
+  randTeacher,
+} from '../../data-access/fake-http.service';
 import { TeacherStore } from '../../data-access/teacher.store';
-import { CardType } from '../../model/card.model';
+import { CardRowDirective } from '../../ui/card/card-row.directive';
 import { CardComponent } from '../../ui/card/card.component';
+import { CardImageComponent } from '../../ui/image/card-image.component';
+import { ListItemComponent } from '../../ui/list-item/list-item.component';
 
 @Component({
   selector: 'app-teacher-card',
   template: `
-    <app-card
-      [list]="teachers()"
-      [type]="cardType"
-      customClass="bg-light-red"></app-card>
+    <app-card [items]="teachers()" class="bg-light-red" (add)="addTeacher()">
+      <app-card-image imgSrc="assets/img/teacher.png" />
+      <ng-template [cardRow]="teachers()" let-teacher>
+        <app-list-item (delete)="deleteTeacher(teacher.id)">
+          {{ teacher.firstName }}
+        </app-list-item>
+      </ng-template>
+    </app-card>
   `,
   styles: [
     `
-      ::ng-deep .bg-light-red {
+      .bg-light-red {
         background-color: rgba(250, 0, 0, 0.1);
       }
     `,
   ],
-  changeDetection: ChangeDetectionStrategy.Eager,
-  imports: [CardComponent],
+  changeDetection: ChangeDetectionStrategy.OnPush,
+  imports: [
+    CardComponent,
+    CardImageComponent,
+    ListItemComponent,
+    CardRowDirective,
+  ],
 })
 export class TeacherCardComponent implements OnInit {
   private http = inject(FakeHttpService);
   private store = inject(TeacherStore);
 
   teachers = this.store.teachers;
-  cardType = CardType.TEACHER;
 
   ngOnInit(): void {
     this.http.fetchTeachers$.subscribe((t) => this.store.addAll(t));
+  }
+
+  addTeacher() {
+    this.store.addOne(randTeacher());
+  }
+
+  deleteTeacher(id: number) {
+    this.store.deleteOne(id);
   }
 }
