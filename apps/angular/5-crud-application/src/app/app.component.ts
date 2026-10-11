@@ -1,55 +1,51 @@
-import { HttpClient } from '@angular/common/http';
 import {
   ChangeDetectionStrategy,
   Component,
   inject,
   OnInit,
 } from '@angular/core';
-import { randText } from '@ngneat/falso';
+import { MatProgressSpinnerModule } from '@angular/material/progress-spinner';
+import { HttpStatus } from './http-status';
+import { TodoItemComponent } from './todo-item.component';
+import { TodosStore } from './todos.store';
 
 @Component({
-  imports: [],
   selector: 'app-root',
+  imports: [TodoItemComponent, MatProgressSpinnerModule],
+  providers: [TodosStore],
+  changeDetection: ChangeDetectionStrategy.OnPush,
   template: `
-    @for (todo of todos; track todo.id) {
-      {{ todo.title }}
-      <button (click)="update(todo)">Update</button>
+    <h1>Todos</h1>
+    @if (httpStatus.loading()) {
+      <mat-spinner diameter="32" aria-label="Loading requests" />
+    }
+    @if (httpStatus.error(); as error) {
+      <div role="alert">
+        {{ error }}
+        <button type="button" (click)="httpStatus.error.set(null)">
+          Dismiss
+        </button>
+      </div>
+    }
+    @if (store.error(); as error) {
+      <p role="alert">{{ error }}</p>
+      <button type="button" [disabled]="store.loading()" (click)="store.load()">
+        Retry
+      </button>
+    }
+    @for (todo of store.todoList(); track todo.id) {
+      <app-todo-item [todo]="todo" />
+    } @empty {
+      @if (!store.loading() && !store.error()) {
+        <p>No todos.</p>
+      }
     }
   `,
-  changeDetection: ChangeDetectionStrategy.Eager,
-  styles: [],
 })
 export class AppComponent implements OnInit {
-  private http = inject(HttpClient);
-
-  todos!: any[];
-
-  ngOnInit(): void {
-    this.http
-      .get<any[]>('https://jsonplaceholder.typicode.com/todos')
-      .subscribe((todos) => {
-        this.todos = todos;
-      });
-  }
-
-  update(todo: any) {
-    this.http
-      .put<any>(
-        `https://jsonplaceholder.typicode.com/todos/${todo.id}`,
-        JSON.stringify({
-          todo: todo.id,
-          title: randText(),
-          body: todo.body,
-          userId: todo.userId,
-        }),
-        {
-          headers: {
-            'Content-type': 'application/json; charset=UTF-8',
-          },
-        },
-      )
-      .subscribe((todoUpdated: any) => {
-        this.todos[todoUpdated.id - 1] = todoUpdated;
-      });
+  readonly store = inject(TodosStore);
+  readonly httpStatus = inject(HttpStatus);
+  ngOnInit() {
+    this.store.load();
   }
 }
